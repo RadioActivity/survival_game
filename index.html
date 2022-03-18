@@ -237,9 +237,9 @@
       name: "",
       days: 1,
       health: 100,
-      hunger: 80,
-      thirst: 80,
-      energy: 100,
+      hunger: 90,
+      thirst: 90,
+      energy: 50,
       hold: [{
         //가방
         id: 0,
@@ -280,13 +280,6 @@
     };
     let user = {}
 
-    //박스 프로그레스(안쓰는 함수
-    function boxProgress(value, mult, max, min) {
-      mult = mult?mult: 10;
-      max = max?max: 100;
-      min = min?min: 0;
-      return "■".repeat(Math.ceil(Math.min(value, max)/mult)) + "□".repeat(Math.max(max-value, 0)/mult) + "▣".repeat(Math.ceil(Math.max(value-max, 0)/mult));
-    }
     //Clamp
     const Clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -325,12 +318,6 @@
     ];
     function statUpdate() {
       $days.textContent = `의 ${user.days}일차`;
-      /*
-      $userhealth.textContent = "체력: " + boxProgress(user.health);
-      $hunger.textContent = "포만: " + boxProgress(user.hunger);
-      $thirst.textContent = "수분: " + boxProgress(user.thirst);
-      $energy.textContent = "기력: " + boxProgress(user.energy);
-      */
       $userhealth.style.width = user.health+"%";
       let hc = 0;
       if (user.health <= 90) hc = 1;
@@ -372,7 +359,7 @@
       });
       return a;
     }
-    //최개 무게
+    //최대 무게
     function currentMaxLoad() {
       let a = 0;
       let b = item[user.hold[0].id];
@@ -748,7 +735,7 @@
       switch (input[0]) {
         case "도움":
           case "도움말":
-            addLog("도움말: 도움말을 띄웁니다.&&창고: 가지고 있는 아이템들을 띄웁니다.&&가방(배낭): 배낭에만 가지고 있는 아이템들을 띄웁니다.&&사용: 사용 가능한 아이템을 사용합니다.&&탐색: 벙커에서 나와 주위 건물을 탐색합니다.&&수색: 찾은 건물을 수색합니다.");
+            addLog("도움말: 도움말을 띄웁니다.&&창고: 가지고 있는 아이템들을 띄웁니다.&&가방(배낭): 배낭에만 가지고 있는 아이템들을 띄웁니다.&&사용: 사용 가능한 아이템을 사용(착용)합니다.&&탐색: 벙커에서 나와 주위 건물을 탐색합니다.&&수색: 찾은 건물을 수색합니다.&&놓기: 모든 아이템을 내려놓습니다.&&들기: 특정 아이템을 줍습니다.");
             break;
           case "창고":
             openinv();
@@ -776,11 +763,6 @@
             case "들기":
               carry(input[1], input[2]);
               break;
-            case "/currenthunger":
-              addLog(user.hunger, "<");
-              break;
-            case "/currentthirst":
-              addLog(user.thirst, "<");
           }
       })
 
