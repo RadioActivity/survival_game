@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500&display=swap" rel="stylesheet">
+  <!-- progress bar -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  <style type="text/css">
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+    }
+  </style>
+  <title>서바이벌 게임</title>
+</head>
+<body>
+  <form id="scn-start">
+    <input id="name-input" placeholder="당신의 이름은...?" style="WIDTH: 75%"> <button id="start" style="float:right; WIDTH: 20%">시작</button>
+  </form>
+
+  <div id="screen" style="width: 90%; position: absoulte; transform: translateX(5%)">
+    <div id="stat" style="display: none; text-align: center">
+      <span id="name" style="font-size: 2em"></span>
+      <span id="days" style="font-size: 1.5em"></span><br>
+      <div class="progress">
+        <div id="health" class="progress-bar progress-bar-success" role="progress-bar" style="width:100%">
+          체력
+        </div>
+      </div>
+      <div class="progress">
+        <div id="hunger" class="progress-bar progress-bar-success" role="progress-bar" style="width:100%">
+          포만
+        </div>
+      </div>
+      <div class="progress">
+        <div id="thirst" class="progress-bar progress-bar-success" role="progress-bar" style="width:100%">
+          수분
+        </div>
+      </div>
+      <div class="progress">
+        <div id="energy" class="progress-bar progress-bar-success" role="progress-bar" style="width:100%">
+          기력
+        </div>
+      </div>
+      <div class="progress">
+        <div id="bagload" class="progress-bar progress-bar-success" role="progress-bar" style="width:0%">
+          가방
+        </div>
+      </div>
+    </div>
+
+    <textarea placeholder="이곳에 기록이 출력됩니다..." id="log" style="WIDTH: 100%; HEIGHT: 280px" readonly></textarea>
+
+    <form id="scn-bunker" style="display: none">
+      <button type="button" onclick="openinv()" style="float: left; WIDTH: 30%">창고</button>
+      <button type="button" onclick="searching()" style="margin-left: 5%; WIDTH: 30%">탐색</button>
+      <button type="button" onclick="sleeping()" style="float: right; WIDTH: 30%">수면</button>
+    </form>
+
+    <form id="scn-search" style="display: none">
+      <button type="button" onclick="openbag()" style="float: left; WIDTH: 20%">가방</button>
+      <button type="button" onclick="searching()" style="margin-left: 7.5%; WIDTH: 20%">탐색</button>
+      <button type="button" onclick="comeback()" style="float: right; WIDTH: 20%">복귀</button>
+      <button type="button" onclick="looting()" style="float: right; margin-right: 7.5%; WIDTH: 20%">수색</button>
+    </form>
+
+    <form id="command" style="display:none">
+      <input id="action_cmd" placeholder="실행할 행동..." style="WIDTH: 75%">
+      <button id="action" style="float:right; WIDTH: 20%">실행</button>
+    </form>
+  </div>
+  <script>
+    const $scnStart = document.querySelector("#scn-start");
+    const $scnBunker = document.querySelector("#scn-bunker");
+    const $scnSearch = document.querySelector("#scn-search");
+    const $scnLooting = document.querySelector("#scn-looting");
+    const $username = document.querySelector("#name");
+    const $stat = document.querySelector("#stat");
+    const $days = document.querySelector("#days");
+    const $userhealth = document.querySelector("#health");
+    const $hunger = document.querySelector("#hunger");
+    const $thirst = document.querySelector("#thirst");
+    const $energy = document.querySelector("#energy");
+    const $load = document.querySelector("#bagload");
+    const $command = document.querySelector("#command");
+    const $log = document.querySelector("#log");
+    //아이템
+    const item = [{
+      name: "없음",
+      load: 0
+    },
+      {
+        //1
+        name: "비스킷",
+        load: 0.1,
+        type: "food",
+        effect: [0,
+          8,
+          0,
+          0]
+      },
+      {
+        //2
+        name: "물",
+        load: 0.5,
+        type: "food",
+        effect: [0,
+          0,
+          20,
+          0]
+      },
+      {
+        //3
+        name: "에너지 드링크",
+        load: 0.3,
+        type: "food",
+        effect: [0,
+          0,
+          10,
+          20]
+      },
+      {
+        //4
+        name: "구급상자",
+        load: 2.3,
+        type: "food",
+        effect: [80,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        //5
+        name: "더플백",
+        load: 1.2,
+        type: "bag",
+        effect: {
+          maxLoad: 20
+        }
+      },
+      {
+        //6
+        name: "소방도끼",
+        load: 3,
+        type: "weapon",
+        effect: {
+          atk: 34,
+          energy: 2
+        }
+      }];
+    //건물 및 전리품
+    const building = [{
+      name: "나의 방공호",
+      ratio: 0,
+      loot_table: [{
+        id: 1,
+        max: 1,
+        ratio: 0.05
+      },
+        {
+          id: 2,
+          max: 1,
+          ratio: 0.05
+        }]
+    },
+      {
+        name: "주택",
+        ratio: 130,
+        loot_table: [{
+          id: 1,
+          max: 2,
+          ratio: 0.6
+        },
+          {
+            id: 2,
+            max: 2,
+            ratio: 0.6
+          },
+          {
+            id: 4,
+            max: 1,
+            ratio: 0.03
+          }]
+      },
+      {
+        name: "상가",
+        ratio: 80,
+        loot_table: [{
+          id: 1,
+          max: 3,
+          ratio: 0.7
+        },
+          {
+            id: 2,
+            max: 3,
+            ratio: 0.7
+          },
+          {
+            id: 3,
+            max: 1,
+            ratio: 0.1
+          },
+          {
+            id: 5,
+            max: 1,
+            ratio: 0.05
+          }]
+      },
+      {
+        name: "약국",
+        ratio: 10,
+        loot_table: [{
+          id: 1,
+          max: 3,
+          ratio: 0.5
+        },
+          {
+            id: 2,
+            max: 4,
+            ratio: 0.5
+          },
+          {
+            id: 4,
+            max: 1,
+            ratio: 0.2
+          }]
+      }];
+    //유저데이터
+    const default_data = {
+      name: "",
+      days: 1,
+      health: 100,
+      hunger: 80,
+      thirst: 80,
+      energy: 100,
+      hold: [{
+        //가방
+        id: 0,
+        amount: 1
+      },
+        {
+          //무기
+          id: 0,
+          amount: 1
+        },
+        {
+          //장비
+          id: 0,
+          amount: 1
+        }],
+      inv: [{
+        id: 1,
+        amount: 10
+      },
+        {
+          id: 2,
+          amount: 5
+        },
+        {
+          id: 3,
+          amount: 1
+        },
+        {
+          id: 4,
+          amount: 1
+        }],
+      bag: [
+        
+      ],
+      maxLoad: 5,
+      location: 0,
+      looted: -1
+    };
+    let user = {}
+
+    //박스 프로그레스(안쓰는 함수
+    function boxProgress(value, mult, max, min) {
+      mult = mult?mult: 10;
+      max = max?max: 100;
+      min = min?min: 0;
+      return "■".repeat(Math.ceil(Math.min(value, max)/mult)) + "□".repeat(Math.max(max-value, 0)/mult) + "▣".repeat(Math.ceil(Math.max(value-max, 0)/mult));
+    }
+    //Clamp
+    const Clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+    //로그 추가
+    function addLog(content, front) {
+      if (front) {
+        front = " "+front+" ";
+      } else {
+        front = "";
+      }
+      $log.value += ($log.value == ""?"": "\n")+front+content.replace(/\&\&/g, "\n");
+      $log.scrollTop = $log.scrollHeight;
+    }
+
+    //이름 적고 시작.
+    $scnStart.addEventListener("submit", (event) => {
+      event.preventDefault();
+      user = default_data;
+      const name = event.target["name-input"].value;
+      addLog(name+"이(가) 눈을 떴습니다. &&이곳은 방공호입니다. 최대한 오래 살아남으십시오.&&\"도움말\"을 실행하여 어떤 행동을 할 수 있는지 확인하십시오.&&기력을 잘 관리하십시오.");
+      $scnStart.style.display = "none";
+      $stat.style.display = "block";
+      $scnBunker.style.display = "block";
+      $command.style.display = "block";
+      $username.textContent = name;
+      user.name = name;
+      statUpdate();
+    });
+
+    //상태 업데이트
+    let barColor = [
+      "progress-bar progress-bar-success",
+      "progress-bar progress-bar-info",
+      "progress-bar progress-bar-warning",
+      "progress-bar progress-bar-danger"
+    ];
+    function statUpdate() {
+      $days.textContent = `의 ${user.days}일차`;
+      /*
+      $userhealth.textContent = "체력: " + boxProgress(user.health);
+      $hunger.textContent = "포만: " + boxProgress(user.hunger);
+      $thirst.textContent = "수분: " + boxProgress(user.thirst);
+      $energy.textContent = "기력: " + boxProgress(user.energy);
+      */
+      $userhealth.style.width = user.health+"%";
+      let hc = 0;
+      if (user.health <= 90) hc = 1;
+      if (user.health <= 50) hc = 2;
+      if (user.health <= 20) hc = 3;
+      $userhealth.className = barColor[hc];
+      $hunger.style.width = user.hunger+"%";
+      let uc = 0;
+      if (user.hunger <= 90) uc = 1;
+      if (user.hunger <= 50) uc = 2;
+      if (user.hunger <= 20) uc = 3;
+      $hunger.className = barColor[uc];
+      $thirst.style.width = user.thirst+"%";
+      let tc = 0;
+      if (user.thirst <= 90) tc = 1;
+      if (user.thirst <= 50) tc = 2;
+      if (user.thirst <= 20) tc = 3;
+      $thirst.className = barColor[tc];
+      $energy.style.width = user.energy+"%";
+      let ec = 0;
+      if (user.energy <= 90) ec = 1;
+      if (user.energy <= 50) ec = 2;
+      if (user.energy <= 20) ec = 3;
+      $energy.className = barColor[ec];
+      let lc = 0;
+      let cl = (currentLoad()/currentMaxLoad())*100;
+      $load.style.width = cl+"%";
+      if (cl > 60) lc = 1;
+      if (cl > 80) lc = 2;
+      if (cl > 90) lc = 3;
+      $load.className = barColor[lc];
+    }
+
+    //현재 무게
+    function currentLoad() {
+      let a = 0;
+      user.bag.forEach(v => {
+        a += item[v.id].load*v.amount;
+      });
+      return a;
+    }
+    //최개 무게
+    function currentMaxLoad() {
+      let a = 0;
+      let b = item[user.hold[0].id];
+      if (b.type == "bag") {
+        return user.maxLoad+b.effect.maxLoad;
+      } else {
+        return user.maxLoad;
+      }
+    }
+
+    //벙커소지품
+    function openinv() {
+      let home = user.inv.map((v, i) =>
+        " - "+item[v.id].name+": "+v.amount+"개 ("+item[v.id].load.toFixed(1)+"/"+(item[v.id].load*v.amount).toFixed(1)+" kg)"
+      );
+      home.length == 0?home = [" - 비어있습니다."]: 0;
+      addLog(user.name+"의 창고&&"+home.join("\n")+"&&", "•");
+      statUpdate();
+    }
+    //배낭소지품
+    function openbag() {
+      let cl = currentLoad();
+      let bag = user.bag.map((v, i) =>
+        " - "+item[v.id].name+": "+v.amount+"개 ("+item[v.id].load.toFixed(1)+"/"+(item[v.id].load*v.amount).toFixed(1)+" kg)"
+      );
+      let equip = {
+        bag: item[user.hold[0].id].name,
+        weap: item[user.hold[1].id].name
+      }
+      bag.length == 0?bag = [" - 비어있습니다."]: 0
+      addLog(user.name+"의 가방 ("+cl.toFixed(1)+"/"+currentMaxLoad().toFixed(1)+" kg)&& - 가방: "+equip.bag+"&& - 무기: "+equip.weap+"&&"+bag.join("\n")+"&&", "•");
+      statUpdate();
+    }
+    //탐색시작
+    function searching() {
+      if (user.energy-2 >= 0) {
+        if ((user.looted == -1 || user.looted == 1) && user.location != -1) {
+          $scnBunker.style.display = "none";
+          $scnSearch.style.display = "block";
+          addLog("탐색을 시작합니다.", "•");
+          user.location = -1;
+          setTimeout(function() {
+            user.energy -= 2;
+            statUpdate();
+            search();
+          }, 1500);
+        } else {
+          addLog("수색/탐색 중 탐색은 불가합니다.", "[!]");
+        }
+      } else {
+        addLog("기력이 부족합니다.", "[!]");
+      }
+      statUpdate();
+    }
+    function search() {
+      let total = 0;
+      building.forEach(v=>total += v.ratio);
+      let select = Math.floor(Math.random()*total);
+      let moved = 0;
+      let current = 0;
+      building.forEach((v, i)=> {
+        if (i != 0) {
+          if (current <= select && current+v.ratio > select) {
+            moved = i;
+          }
+          current += v.ratio;
+        }
+      });
+      user.location = moved;
+      user.looted = -1;
+      addLog(building[moved].name+"을(를) 찾았습니다.",
+        "•");
+      let loott = building[user.location].loot_table;
+      let expect = loott.map((v, i) => " - "+item[v.id].name+"("+(loott[i].min?loott[i].min: 1)+(loott[i].max == 1?"": "~"+loott[i].max)+") "+loott[i].ratio*100+"%");
+      addLog("찾을 수 있는 것:&&"+expect.join("\n"),
+        "-");
+      addLog("\"수색\"으로 건물 수색하기&&",
+        "-");
+    }
+    //창고 아이템 추가
+    function addItemInv(id, amount) {
+      let success = false;
+      user.inv.forEach((v, i) => {
+        if (v.id == id) {
+          v.amount += amount;
+          if (v.amount == 0) {
+            user.inv.splice(i, 1);
+          }
+          success = true;
+        }
+      });
+      if (!success && amount > 0) {
+        user.inv.push({
+          id: id, amount: amount
+        });
+      }
+      return success;
+    }
+    //배낭 아이템 추가
+    function addItemBag(id, amount) {
+      let success = 0;
+      let cl = currentLoad();
+      if ( cl + item[id].load*amount <= currentMaxLoad() ) {
+        user.bag.forEach((v, i) => {
+          if (v.id == id) {
+            v.amount += amount;
+            if (v.amount == 0) {
+              user.bag.splice(i, 1);
+            }
+            success = 1;
+          }
+        });
+      } else {
+        success = -1;
+      }
+      if (success == 0 && amount > 0) {
+        user.bag.push({
+          id: id, amount: amount
+        });
+      }
+      return success;
+    }
+    //착용물 아이템 추가
+    function addItemHold(id, type) {}
+    //아이템 사용
+    function useItem(name, amount) {
+      try {
+        let item_id = 0;
+        item.forEach((v, i) => {
+          if (v.name == name) {
+            item_id = i;
+          }
+        });
+        if (item_id == 0) {
+          addLog("올바른 아이템 이름이 입력되지 않았습니다.", "[!]");
+          return false;
+        }
+        if (amount <= 0) {
+          addLog("사용할 갯수를 정확히 입력해주십시오.", "[!]");
+          return false;
+        }
+        if (amount == undefined) {
+          amount = 1;
+        }
+        let item_location = 0
+        if (user.location == 0) {
+          user.inv.forEach((v, i) => {
+            if (v.id == item_id) {
+              if (v.amount < amount) {
+                addLog("가지고 있는 것 보다 많이 사용할 수 없습니다.", "[!]");
+                return false;
+              }
+              item_location = 1;
+              addItemInv(v.id, -amount);
+            }
+          });
+        }
+        if (item_location == 0) {
+          user.bag.forEach((v, i) => {
+            if (v.id == item_id) {
+              if (v.amount < amount) {
+                addLog("가지고 있는 것 보다 많이 사용할 수 없습니다.", "[!]");
+                return false;
+              }
+              item_location = 2;
+              addItemBag(v.id, -amount);
+            }
+          });
+        }
+        let using_type = ["사용", "착용"];
+        let used = -1;
+        if (item_location != 0) {
+          let llc = ["",
+            "창고",
+            "가방"];
+          if (item[item_id].type == "food") {
+            let efct = item[item_id].effect;
+            used = 0;
+            user.health = Clamp(user.health+efct[0]*amount, 0, 100);
+            user.hunger = Clamp(user.hunger+efct[1]*amount, 0, 100);
+            user.thirst = Clamp(user.thirst+efct[2]*amount, 0, 100);
+            user.energy = Clamp(user.energy+efct[3]*amount, 0, 100);
+          }
+          if (item[item_id].type == "bag") {
+            user.hold[0] = {
+              id: item_id,
+              amount: 1,
+            }
+            used = 1;
+            amount = 1;
+          }
+          addLog(llc[item_location]+"에서 "+item[item_id].name+"을(를) "+amount+"개 "+using_type[used]+"했습니다.", "•");
+          return true;
+        }
+      } catch(e) {
+        addLog("올바른 값을 입력해주십시오.", "[!]");
+        return false;
+      }
+    }
+    //건물 수색
+    function looting() {
+      if (user.location == -1) {
+        addLog("탐색 중 수색은 불가능합니다.","[!]");
+        return;
+      }
+      let nowLocation = building[user.location];
+      let leftloots = nowLocation.loot_table.length;
+      let consume = 2;
+      if (user.energy >= leftloots*consume) {
+        if (user.looted == -1) {
+          user.looted = 0;
+          addLog(nowLocation.name+"을(를) 수색합니다.", "•");
+          let currentloots = 0;
+          for (let i = 0; i < leftloots; i++) {
+            let loott = setTimeout(function() {
+              user.energy -= consume;
+              if (nowLocation.loot_table[i].ratio > Math.random()) {
+                let maximum = nowLocation.loot_table[i].max;
+                if (maximum == null) maximum = 1;
+                let n = Math.ceil(Math.random()*maximum);
+                let take = addItemBag(nowLocation.loot_table[i].id, n);
+                addLog(item[nowLocation.loot_table[i].id].name+"을(를) "+n+"개 획득.", "-");
+                if (take==-1) {
+                  addLog("가방에 더 넣을 수 없습니다.", "[!]");
+                }
+              } else {
+                addLog(item[nowLocation.loot_table[i].id].name+"을(를) 찾지 못했습니다.", "-")
+              }
+              statUpdate();
+            },
+              2000*(i+1));
+            if (i+1 == leftloots) {
+              setTimeout(function() {
+                user.looted = 1;
+                addLog("수색을 마쳤습니다.&&", "•");
+                statUpdate();
+              },
+                2000*(i+1));
+            }
+          }
+        } else if (user.looted == 0) {
+          addLog("이미 수색중입니다.", "[!]");
+        } else if (user.looted == 1) {
+          addLog("이미 수색한 곳 입니다.", "[!]");
+        }
+      } else {
+        addLog("기력이 부족합니다.", "[!]");
+      }
+    }
+    //챙기기
+    function carry(name, amount) {
+      if(name != undefined){
+        let item_id = 0;
+        item.forEach((v, i) => {
+          if (v.name == name) {
+            item_id = i;
+          }
+        });
+        if (item_id == 0) {
+          addLog("올바른 아이템 이름이 입력되지 않았습니다.", "[!]");
+          return false;
+        }
+        if (amount <= 0) {
+          addLog("사용할 갯수를 정확히 입력해주십시오.", "[!]");
+          return false;
+        }
+        if (amount == undefined) {
+          amount = 1;
+        }
+        user.inv.forEach((v,i) => {
+          if (v.id == item_id) {
+            if(v.amount < amount) {
+              addLog("가지고 있는 것 보다 더 많이 챙길 수 없습니다.","[!]");
+              return;
+            }
+            addItemInv(item_id, -amount);
+            addItemBag(item_id, amount);
+            addLog(item[item_id].name+"을(를) "+amount+"개 챙겼습니다.");
+          }
+        });
+        statUpdate();
+      } else {
+        addLog("챙길 것을 정확히 입력해주십시오.");
+      }
+    }
+    //짐 풀기
+    function unpack(id, amount) {
+      if (id == undefined) {
+        if (user.location != 0) {
+          let cfrm = confirm("방공호 밖에서는 다시 회수 할 수 없습니다. 모두 버리시겠습니까?");
+          if(!cfrm){
+            addLog("짐풀기를 취소했습니다.","•");
+            return;
+          }
+        }
+        if(user.location == 0) {
+          user.bag.forEach((v,i) => {
+            addItemInv(v.id, v.amount);
+          });
+      }
+      user.bag.splice(0);
+        addLog("모든 짐을 풀었습니다.", "•");
+      } else {
+        addLog("으어어 싫어");
+      }
+      statUpdate();
+    }
+    //복귀
+    function comeback() {
+      if (user.energy >= 3) {
+        if (user.looted == -1 || user.looted == 1) {
+          $scnSearch.style.display = "none";
+          $scnBunker.style.display = "block";
+          user.location = 0;
+          user.energy -= 3;
+          addLog("벙커로 복귀했습니다.&&", "•");
+          statUpdate();
+        } else {
+          addLog("수색 중 복귀는 불가능합니다.", "[!]");
+        }
+      } else {
+        addLog("기력이 부족합니다.", "[!]")
+      }
+    }
+    //수면, 체력 및 에너지 자연회복
+    function sleeping() {
+      //체력 회복
+      let regen_health = 0;
+      if (user.hunger >= 90 && user.thirst >= 90) {
+        regen_health = 5;
+      }
+      user.health = Clamp(user.health+regen_health, 0, 100);
+      //에너지 회복
+      let regen_energy = 60;
+      if (user.location != 0) {
+        regen_energy *= 0.5;
+      }
+      if (user.hunger == 0) {
+        regen_energy *= 0.5;
+      }
+      user.energy = Math.min(user.energy+regen_energy, 100);
+      //배고픔
+      let hungry = 15;
+      user.hunger = Math.max(user.hunger-hungry, 0);
+      //목마름
+      let thirsty = 15;
+      user.thirst = Math.max(user.thirst-thirsty, 0);
+      //수분0이면 체력감소
+      let dying = 15;
+      if (user.thirst == 0) {
+        user.health = Math.max(user.health-dying, 0);
+      }
+      user.days++;
+      if (user.health != 0) {
+        addLog(user.days+"일차입니다.&&", "•");
+        statUpdate();
+      } else {
+        user.location = -1;
+        addLog(user.days+"일 차에 "+user.name+"은(는) 사망했습니다.", "•");
+        addLog("새로고침하여 다시 시작하십시오.");
+        $stat.style.display = "none";
+        $command.style.display = "none";
+        $scnBunker.style.display = "none";
+        $scnSearch.style.display = "none";
+        statUpdate();
+      }
+    }
+
+    $command.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const input = event.target["action_cmd"].value.split(" ");
+      addLog(input.join(" "), ">");
+      switch (input[0]) {
+        case "도움":
+          case "도움말":
+            addLog("도움말: 도움말을 띄웁니다.&&창고: 가지고 있는 아이템들을 띄웁니다.&&가방(배낭): 배낭에만 가지고 있는 아이템들을 띄웁니다.&&사용: 사용 가능한 아이템을 사용합니다.&&탐색: 벙커에서 나와 주위 건물을 탐색합니다.&&수색: 찾은 건물을 수색합니다.");
+            break;
+          case "창고":
+            openinv();
+            break;
+          case "가방":
+            case "배낭":
+              openbag();
+              break;
+            case "탐색":
+              searching();
+              break;
+            case "수색":
+              looting();
+              break;
+            case "수면":
+              sleeping();
+              break;
+            case "사용":
+              useItem(input[1], input[2]);
+              statUpdate();
+              break;
+            case "놓기":
+              unpack(input[1], input[2]);
+              break;
+            case "들기":
+              carry(input[1], input[2]);
+              break;
+            case "/currenthunger":
+              addLog(user.hunger, "<");
+              break;
+            case "/currentthirst":
+              addLog(user.thirst, "<");
+          }
+      })
+
+    </script>
+  </body>
+</html>
