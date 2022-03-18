@@ -142,7 +142,7 @@
         load: 1.2,
         type: "bag",
         effect: {
-          maxLoad: 20
+          maxLoad: 8
         }
       },
       {
@@ -410,14 +410,14 @@
     }
     //탐색시작
     function searching() {
-      if (user.energy-2 >= 0) {
+      if (user.energy-3 >= 0) {
         if ((user.looted == -1 || user.looted == 1) && user.location != -1) {
           $scnBunker.style.display = "none";
           $scnSearch.style.display = "block";
           addLog("탐색을 시작합니다.", "•");
           user.location = -1;
           setTimeout(function() {
-            user.energy -= 2;
+            user.energy -= 3;
             statUpdate();
             search();
           }, 1500);
@@ -583,7 +583,7 @@
       }
       let nowLocation = building[user.location];
       let leftloots = nowLocation.loot_table.length;
-      let consume = 2;
+      let consume = 3;
       if (user.energy >= leftloots*consume) {
         if (user.looted == -1) {
           user.looted = 0;
@@ -787,7 +787,6 @@
               break;
           }
       })
-
     </script>
   </body>
 </html>
