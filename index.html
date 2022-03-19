@@ -21,7 +21,7 @@
 </head>
 <body>
   <form id="scn-start">
-    <input id="name-input" placeholder="당신의 이름은...?" style="WIDTH: 75%"> <button id="start" style="float:right; WIDTH: 20%">시작</button>
+    <input id="name-input" placeholder="당신의 이름은...?" style="WIDTH: 75%" maxlength="15"> <button id="start" style="float:right; WIDTH: 20%">시작</button>
   </form>
 
   <div id="screen" style="width: 90%; position: absoulte; transform: translateX(5%)">
@@ -74,6 +74,19 @@
       <input id="action_cmd" placeholder="실행할 행동..." style="WIDTH: 75%">
       <button id="action" style="float:right; WIDTH: 20%">실행</button>
     </form>
+    
+    <div id="autofill" style="display:none">
+      <button type="button" onclick="autofill('도움말')" style="float: left; WIDTH: 20%">도움말</button>
+      <button type="button" onclick="autofill('창고')" style="float: left; WIDTH: 20%">창고</button>
+      <button type="button" onclick="autofill('가방')" style="float: left; WIDTH: 20%">가방</button>
+      <button type="button" onclick="autofill('탐색')" style="float: left; WIDTH: 20%">탐색</button>
+      <button type="button" onclick="autofill('수색')" style="float: left; WIDTH: 20%">수색</button>
+      <button type="button" onclick="autofill('정보')" style="float: left; WIDTH: 20%">정보</button>
+      <button type="button" onclick="autofill('놓기')" style="float: left; WIDTH: 20%">놓기</button>
+      <button type="button" onclick="autofill('들기')" style="float: left; WIDTH: 20%">들기</button>
+      <button type="button" onclick="autofill('사용 ')" style="float: left; WIDTH: 20%">사용</button>
+      <button type="button" onclick="autofill('복귀')" style="float: left; WIDTH: 20%">복귀</button>
+    </div>
   </div>
   <script>
     const $scnStart = document.querySelector("#scn-start");
@@ -101,7 +114,7 @@
         load: 0.1,
         type: "food",
         effect: [0,
-          8,
+          7,
           0,
           0]
       },
@@ -112,7 +125,7 @@
         type: "food",
         effect: [0,
           0,
-          20,
+          15,
           0]
       },
       {
@@ -246,6 +259,8 @@
             ratio: 0.2
           }]
       }];
+    let total = 0;
+      building.forEach(v=>total += v.ratio);
     //유저데이터
     const default_data = {
       name: "",
@@ -290,7 +305,10 @@
       ],
       maxLoad: 5,
       location: 0,
-      looted: -1
+      looted: -1,
+      search_consume: 3,
+      looting_consume: 3,
+      comeback_consume: 3
     };
     let user = {}
 
@@ -307,17 +325,32 @@
       $log.value += ($log.value == ""?"": "\n")+front+content.replace(/\&\&/g, "\n");
       $log.scrollTop = $log.scrollHeight;
     }
+    
+    function building_gacha_table(){
+      let result = building.map((v,i) =>
+      [v.name, (v.ratio/total)*100]
+      );
+      result.shift();
+      result.sort(function(a,b){ return b[1]-a[1]});
+      return result.map((v,i) => i+1+". "+v[0]+": "+v[1].toFixed(2)+"%").join("\n");
+    }
+    
+    //자동 기입
+    function autofill(content){
+      $("#action_cmd").val(content);
+    }
 
     //이름 적고 시작.
     $scnStart.addEventListener("submit", (event) => {
       event.preventDefault();
       user = default_data;
       const name = event.target["name-input"].value;
-      addLog(name+"이(가) 눈을 떴습니다. &&이곳은 방공호입니다. 최대한 오래 살아남으십시오.&&\"도움말\"을 실행하여 어떤 행동을 할 수 있는지 확인하십시오.&&기력을 잘 관리하십시오.");
+      addLog(name+"이(가) 눈을 떴습니다. &&이곳은 방공호입니다. 최대한 오래 살아남으십시오.&&\"도움말\"과 \"정보\"를 '실행할 행동...'에 입력하여 어떤 행동을 할 수 있는지 확인하십시오.&&기력을 잘 관리하십시오.");
       $scnStart.style.display = "none";
       $stat.style.display = "block";
       $scnBunker.style.display = "block";
       $command.style.display = "block";
+      document.querySelector("#autofill").style.display = "block";
       $username.textContent = name;
       user.name = name;
       statUpdate();
@@ -409,14 +442,14 @@
     }
     //탐색시작
     function searching() {
-      if (user.energy-3 >= 0) {
+      if (user.energy >= user.search_consume) {
         if ((user.looted == -1 || user.looted == 1) && user.location != -1) {
           $scnBunker.style.display = "none";
           $scnSearch.style.display = "block";
           addLog("탐색을 시작합니다.", "•");
           user.location = -1;
           setTimeout(function() {
-            user.energy -= 2;
+            user.energy -= user.search_consume;
             statUpdate();
             search();
           }, 1500);
@@ -429,8 +462,6 @@
       statUpdate();
     }
     function search() {
-      let total = 0;
-      building.forEach(v=>total += v.ratio);
       let select = Math.floor(Math.random()*total);
       let moved = 0;
       let current = 0;
@@ -511,12 +542,12 @@
           addLog("올바른 아이템 이름이 입력되지 않았습니다.", "[!]");
           return false;
         }
+        if (amount == undefined) {
+          amount = 1;
+        }
         if (amount <= 0 || isNaN(amount)) {
           addLog("사용할 갯수를 정확히 입력해주십시오.", "[!]");
           return false;
-        }
-        if (amount == undefined) {
-          amount = 1;
         }
         let item_location = 0
         if (user.location == 0) {
@@ -582,15 +613,14 @@
       }
       let nowLocation = building[user.location];
       let leftloots = nowLocation.loot_table.length;
-      let consume = 3;
-      if (user.energy >= leftloots*consume) {
+      if (user.energy >= leftloots*user.looting_consume) {
         if (user.looted == -1) {
           user.looted = 0;
           addLog(nowLocation.name+"을(를) 수색합니다.", "•");
           let currentloots = 0;
           for (let i = 0; i < leftloots; i++) {
             let loott = setTimeout(function() {
-              user.energy -= consume;
+              user.energy -= user.looting_consume;
               if (nowLocation.loot_table[i].ratio > Math.random()) {
                 let maximum = nowLocation.loot_table[i].max;
                 if (maximum == null) maximum = 1;
@@ -637,12 +667,12 @@
           addLog("올바른 아이템 이름이 입력되지 않았습니다.", "[!]");
           return false;
         }
+        if (amount == undefined) {
+          amount = 1;
+        }
         if (amount <= 0 || isNaN(amount)) {
           addLog("사용할 갯수를 정확히 입력해주십시오.", "[!]");
           return false;
-        }
-        if (amount == undefined) {
-          amount = 1;
         }
         user.inv.forEach((v, i) => {
           if (v.id == item_id) {
@@ -657,7 +687,7 @@
         });
         statUpdate();
       } else {
-        addLog("챙길 것을 정확히 입력해주십시오.");
+        addLog("챙길 것을 정확히 입력해주십시오.","[!]");
       }
     }
     //놓기
@@ -684,12 +714,12 @@
     }
     //복귀
     function comeback() {
-      if (user.energy >= 3) {
+      if (user.energy >= user.comeback_consume) {
         if (user.looted == -1 || user.looted == 1) {
           $scnSearch.style.display = "none";
           $scnBunker.style.display = "block";
           user.location = 0;
-          user.energy -= 3;
+          user.energy -= user.comeback_consume;
           addLog("벙커로 복귀했습니다.&&", "•");
           statUpdate();
         } else {
@@ -728,8 +758,8 @@
             spec.push("기력: "+en+"%");
           addLog(name+"의 정보&&"+spec,"•");
           break;
-          default:
-          addLog("정보가 없습니다","[!]")
+        default:
+          addLog("정보가 없습니다","[!]");
       }
     }
     //수면, 체력 및 에너지 자연회복
@@ -784,6 +814,7 @@
         case "도움":
           case "도움말":
             addLog("도움말: 도움말을 띄웁니다.");
+            addLog("정보: 게임/아이템 정보를 보여줍니다.&&\"정보\"만 입력 시 게임 도움말을 보여줍니다.");
             addLog("창고: 가지고 있는 아이템들을 띄웁니다.");
             addLog("가방(배낭): 배낭에만 가지고 있는 아이템들을 띄웁니다.");
             addLog("사용: 사용 가능한 아이템을 사용(착용)합니다.&&예) 사용 에너지드링크 1 => 에너지드링크를 사용합니다.");
@@ -818,7 +849,19 @@
               carry(input[1], input[2]);
               break;
             case "정보":
-              itemSpec(input[1]);
+              if (input[1]) {
+                itemSpec(input[1]);
+              } else {
+                addLog("상태창","•");
+                addLog("체력: 모두 없어지면 사망합니다.&&수분이 없으면 감소하기 시작합니다.&&포만, 수분이 녹색(>90%)이면 조금씩 회복됩니다.","-");
+                addLog("포만: 모두 없어지면 수면 시 기력 회복 정도가 감소합니다.","-");
+                addLog("수분: 모두 없어지면 체력이 감소합니다.","-");
+                addLog("기력: 행동할 수 있는 정도입니다.","-");
+                addLog("가방: 현재 가지고 있는 소지품의 무게입니다.&&가득 차게 된다면 더 이상 주울 수 없게 됩니다.","-");
+                addLog("탐색 및 수색","•");
+                addLog("탐색 시에는 기력을 "+user.search_consume+"% 소모합니다. 각 건물을 찾을 확률은 다음과 같습니다.&&"+building_gacha_table(),"-");
+                addLog("건물 수색 시에는 기력을 "+user.looting_consume+"×(전리품 종류)% 소모합니다.");
+              }
               break;
         }
       })
