@@ -489,7 +489,7 @@
       let success = false;
       user.inv.forEach((v, i) => {
         if (v.id == id) {
-          v.amount += amount;
+          v.amount = Number(v.amount)+Number(amount);
           if (v.amount == 0) {
             user.inv.splice(i, 1);
           }
@@ -510,7 +510,7 @@
       if (cl + item[id].load*amount <= currentMaxLoad()) {
         user.bag.forEach((v, i) => {
           if (v.id == id) {
-            v.amount += amount;
+            v.amount = Number(v.amount) + Number(amount);
             if (v.amount == 0) {
               user.bag.splice(i, 1);
             }
